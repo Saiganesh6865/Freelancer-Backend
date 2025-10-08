@@ -4,15 +4,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
+    # ---------- Environment ----------
+    ENV = os.getenv("FLASK_ENV", "production")  # 'development' or 'production'
+
     # ---------- Flask ----------
     SECRET_KEY = os.getenv("FLASK_SECRET", "super-secret-flask-key")
 
     # ---------- JWT ----------
     JWT_SECRET_KEY = os.getenv("JWT_SECRET", "super-secret-jwt-key")
     JWT_TOKEN_LOCATION = ["cookies"]
-    JWT_COOKIE_SECURE = True          # HTTPS-only
-    JWT_COOKIE_SAMESITE = "None"      # For cross-site cookies
     JWT_COOKIE_CSRF_PROTECT = True
+    JWT_ACCESS_CSRF_HEADER_NAME = "X-CSRF-TOKEN"
+
+    if ENV == "development":
+        JWT_COOKIE_SECURE = False          # allow HTTP for localhost
+        JWT_COOKIE_SAMESITE = "Lax"        # easier for dev
+    else:
+        JWT_COOKIE_SECURE = True           # HTTPS-only
+        JWT_COOKIE_SAMESITE = "None"       # cross-site cookies for prod
 
     # ---------- Database ----------
     DB_USERNAME = os.getenv("DB_USERNAME")
@@ -27,8 +36,8 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
-        "connect_args": {"sslmode": "require"},  # ensures Render SSL
-        "pool_pre_ping": True                    # keeps idle connections alive
+        "connect_args": {"sslmode": "require"},
+        "pool_pre_ping": True
     }
 
     # ---------- CORS ----------
