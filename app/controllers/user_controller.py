@@ -145,14 +145,31 @@ def get_csrf_token():
 
 
 
+# @bp.route('/logout', methods=['POST'])
+# @jwt_required()
+# def logout():
+#     jwt_data = get_jwt()   # get the decoded JWT payload
+#     result = logout_user(jwt_data)
+
+#     response = make_response(jsonify({"message": result["message"]}))
+#     unset_jwt_cookies(response)
+#     return response, result.get("code", 200)
+
 @bp.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
-    jwt_data = get_jwt()   # get the decoded JWT payload
+    jwt_data = get_jwt()  # get the decoded JWT payload
     result = logout_user(jwt_data)
 
     response = make_response(jsonify({"message": result["message"]}))
+
+    # Remove JWT cookies
     unset_jwt_cookies(response)
+
+    # Also remove CSRF cookies
+    response.delete_cookie("csrf_access_token", path="/")
+    response.delete_cookie("csrf_refresh_token", path="/")
+
     return response, result.get("code", 200)
 
 
@@ -226,5 +243,6 @@ def reset_password():
         return error_response("Invalid OTP or failed to reset password", 400)
 
     return jsonify({"message": "Password reset successfully"}), 200
+
 
 
