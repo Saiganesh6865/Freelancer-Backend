@@ -1,6 +1,6 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager
+from flask_jwt_extended import JWTManager, verify_jwt_in_request_optional, get_csrf_token
 from flask_migrate import Migrate
 from flask_cors import CORS
 from .config import Config
@@ -9,6 +9,7 @@ from .config import Config
 db = SQLAlchemy()
 jwt = JWTManager()
 migrate = Migrate()
+
 
 def create_app():
     app = Flask(__name__)
@@ -21,13 +22,25 @@ def create_app():
         origins=Config.FRONTEND_ORIGINS
     )
 
+    # ---------- JWT / CSRF CONFIG ----------
+    app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
+    app.config["JWT_COOKIE_SECURE"] = True  # ✅ required for HTTPS (Render)
+    app.config["JWT_COOKIE_SAMESITE"] = "Strict"
+    app.config["JWT_COOKIE_CSRF_PROTECT"] = True
+    app.config["JWT_ACCESS_CSRF_HEADER_NAME"] = "X-CSRF-TOKEN"
+
     # ---------- Init extensions ----------
     db.init_app(app)
     jwt.init_app(app)
     migrate.init_app(app, db)
 
     # ---------- Blueprints ----------
-    from app.controllers import user_controller, job_controller, freelancer_controller, admin_controller
+    from app.controllers import (
+        user_controller,
+        job_controller,
+        freelancer_controller,
+        admin_controller
+    )
     from app.controllers.manager_controller import bp as manager_bp
 
     app.register_blueprint(user_controller.bp)
@@ -36,7 +49,7 @@ def create_app():
     app.register_blueprint(admin_controller.bp)
     app.register_blueprint(manager_bp)
 
-    # ---------- JWT token revocation ----------
+    # ---------- JWT Token Revocation ----------
     with app.app_context():
         from app.models.revoked_token import RevokedToken
 
@@ -44,5 +57,6 @@ def create_app():
         def check_if_token_revoked(jwt_header, jwt_payload):
             jti = jwt_payload["jti"]
             return RevokedToken.query.filter_by(jti=jti).first() is not None
+
 
     return app
