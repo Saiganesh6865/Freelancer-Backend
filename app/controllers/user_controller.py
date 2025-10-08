@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify, make_response
 from flask_jwt_extended import (
     jwt_required, set_access_cookies, set_refresh_cookies,
-    unset_jwt_cookies, verify_jwt_in_request
+    unset_jwt_cookies, verify_jwt_in_request, verify_jwt_in_request_optional, get_csrf_token
 )
+# from flask_jwt_extended import JWTManager, verify_jwt_in_request_optional, get_csrf_token
 from app.services.user_service import (
     authenticate_and_generate_tokens,
     refresh_tokens,
@@ -242,6 +243,7 @@ def reset_password():
         return error_response("Invalid OTP or failed to reset password", 400)
 
     return jsonify({"message": "Password reset successfully"}), 200
+
 
 
 
