@@ -19,6 +19,7 @@ from app.services.user_service import (
 from app.repositories.user_repository import is_admin_request
 from app.utils.response import error_response
 from flask_jwt_extended import get_jwt
+import uuid
 
 bp = Blueprint('user', __name__, url_prefix='/user')
 COMPANY_EMAIL_DOMAIN = "@company.com"
@@ -119,7 +120,13 @@ def check_session():
         set_access_cookies(response, result["new_access_token"])
     return response, 200
 
-
+@bp.route('/csrf-token', methods=['GET'])
+def get_csrf_token():
+    token = str(uuid.uuid4())  # generate a random token
+    response = jsonify({"csrf_token": token})
+    # Store token in secure cookie (optional)
+    response.set_cookie("csrf_access_token", token, httponly=True, secure=True, samesite='Strict')
+    return response, 200
 
 
 @bp.route('/logout', methods=['POST'])
@@ -203,3 +210,4 @@ def reset_password():
         return error_response("Invalid OTP or failed to reset password", 400)
 
     return jsonify({"message": "Password reset successfully"}), 200
+
