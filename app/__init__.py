@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager, verify_jwt_in_request_optional, get_csrf_token
+from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
 from flask_cors import CORS
 from .config import Config
@@ -60,3 +60,4 @@ def create_app():
 
 
     return app
+
