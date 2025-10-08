@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
@@ -10,7 +10,6 @@ db = SQLAlchemy()
 jwt = JWTManager()
 migrate = Migrate()
 
-
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -21,13 +20,6 @@ def create_app():
         supports_credentials=True,
         origins=Config.FRONTEND_ORIGINS
     )
-
-    # ---------- JWT / CSRF CONFIG ----------
-    app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
-    app.config["JWT_COOKIE_SECURE"] = True  # ✅ required for HTTPS (Render)
-    app.config["JWT_COOKIE_SAMESITE"] = "Strict"
-    app.config["JWT_COOKIE_CSRF_PROTECT"] = True
-    app.config["JWT_ACCESS_CSRF_HEADER_NAME"] = "X-CSRF-TOKEN"
 
     # ---------- Init extensions ----------
     db.init_app(app)
@@ -58,6 +50,4 @@ def create_app():
             jti = jwt_payload["jti"]
             return RevokedToken.query.filter_by(jti=jti).first() is not None
 
-
     return app
-
