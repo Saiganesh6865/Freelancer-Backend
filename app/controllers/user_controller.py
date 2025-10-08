@@ -131,7 +131,7 @@ def check_session():
     
  # ---------- CSRF Token Route (optional but helpful) ----------
 
-@app.route("/csrf-token", methods=["GET"])
+@bp.route("/csrf-token", methods=["GET"])
 def csrf_token():
     """
     Returns the current CSRF token (if logged in) for frontend to use.
@@ -242,6 +242,7 @@ def reset_password():
         return error_response("Invalid OTP or failed to reset password", 400)
 
     return jsonify({"message": "Password reset successfully"}), 200
+
 
 
 
