@@ -128,19 +128,29 @@ def check_session():
 #     response.set_cookie("csrf_access_token", token, httponly=True, secure=True, samesite='Strict')
 #     return response, 200
 
+    
 @bp.route('/csrf-token', methods=['GET'])
 def get_csrf_token():
-    token = str(uuid.uuid4())  # generate a random token
+    import uuid
+    token = str(uuid.uuid4())
     response = jsonify({"csrf_token": token})
 
-    # Overwrite previous cookie if exists
+    # Always overwrite existing cookies
     response.set_cookie(
-        "csrf_access_token", 
-        token, 
-        httponly=True, 
-        secure=True, 
-        samesite='Strict', 
-        path="/"  # ensure same path for consistency
+        "csrf_access_token",
+        token,
+        httponly=True,
+        secure=True,
+        samesite="Strict",
+        path="/"
+    )
+    response.set_cookie(
+        "csrf_refresh_token",
+        token,
+        httponly=True,
+        secure=True,
+        samesite="Strict",
+        path="/"
     )
 
     return response, 200
@@ -245,6 +255,7 @@ def reset_password():
         return error_response("Invalid OTP or failed to reset password", 400)
 
     return jsonify({"message": "Password reset successfully"}), 200
+
 
 
 
