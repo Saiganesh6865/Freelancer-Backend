@@ -1,9 +1,8 @@
 from flask import Blueprint, request, jsonify, make_response
 from flask_jwt_extended import (
     jwt_required, set_access_cookies, set_refresh_cookies,
-    unset_jwt_cookies, verify_jwt_in_request, verify_jwt_in_request_optional, get_csrf_token
+    unset_jwt_cookies, verify_jwt_in_request, get_jwt
 )
-# from flask_jwt_extended import JWTManager, verify_jwt_in_request_optional, get_csrf_token
 from app.services.user_service import (
     authenticate_and_generate_tokens,
     refresh_tokens,
@@ -19,8 +18,8 @@ from app.services.user_service import (
 )
 from app.repositories.user_repository import is_admin_request
 from app.utils.response import error_response
-from flask_jwt_extended import get_jwt
 import uuid
+
 
 bp = Blueprint('user', __name__, url_prefix='/user')
 COMPANY_EMAIL_DOMAIN = "@company.com"
@@ -243,6 +242,7 @@ def reset_password():
         return error_response("Invalid OTP or failed to reset password", 400)
 
     return jsonify({"message": "Password reset successfully"}), 200
+
 
 
 
