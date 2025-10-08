@@ -129,32 +129,19 @@ def check_session():
 #     return response, 200
 
     
-@bp.route('/csrf-token', methods=['GET'])
-def get_csrf_token():
-    import uuid
-    token = str(uuid.uuid4())
-    response = jsonify({"csrf_token": token})
+ # ---------- CSRF Token Route (optional but helpful) ----------
 
-    # Always overwrite existing cookies
-    response.set_cookie(
-        "csrf_access_token",
-        token,
-        httponly=True,
-        secure=True,
-        samesite="Strict",
-        path="/"
-    )
-    response.set_cookie(
-        "csrf_refresh_token",
-        token,
-        httponly=True,
-        secure=True,
-        samesite="Strict",
-        path="/"
-    )
-
-    return response, 200
-
+@app.route("/csrf-token", methods=["GET"])
+def csrf_token():
+    """
+    Returns the current CSRF token (if logged in) for frontend to use.
+    No new token is created; it just reads the one from JWT cookies.
+    """
+    verify_jwt_in_request_optional()  # doesn't raise if token missing
+    token = get_csrf_token(request.cookies.get("access_token_cookie"))
+    if not token:
+        return jsonify({"error": "No active CSRF token"}), 401
+    return jsonify({"csrf_token": token}), 200
 
 
 # @bp.route('/logout', methods=['POST'])
@@ -255,6 +242,7 @@ def reset_password():
         return error_response("Invalid OTP or failed to reset password", 400)
 
     return jsonify({"message": "Password reset successfully"}), 200
+
 
 
 
