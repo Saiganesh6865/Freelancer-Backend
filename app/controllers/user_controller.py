@@ -129,14 +129,30 @@ def signup():
 # ---------- SESSION CHECK ----------
 @bp.route('/session', methods=['GET'])
 def check_session():
-    result = check_session_service(request)
-    if "error" in result:
-        return jsonify({"error": result["error"]}), result.get("code", 401)
+    from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
+    try:
+        # Verify JWT
+        verify_jwt_in_request(optional=True)
+        user_id = get_jwt_identity()
+        if not user_id:
+            return jsonify({"error": "Not logged in"}), 401
 
-    response = jsonify({"user": result["user"], "csrf_token": get_csrf_token()})
-    if "new_access_token" in result:
-        set_access_cookies(response, result["new_access_token"])
-    return response, 200
+        # Fetch user from DB
+        from app.models.user import User
+        user = User.query.filter_by(id=int(user_id)).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        # Generate CSRF token from current JWT
+        encoded_token = request.cookies.get("access_token_cookie")
+        csrf_token = get_csrf_token(encoded_token)  # <-- pass token here
+
+        return jsonify({"user": user.to_dict(), "csrf_token": csrf_token}), 200
+
+    except Exception as e:
+        import traceback
+        print("Session endpoint error:", traceback.format_exc())
+        return jsonify({"error": "Internal server error"}), 500
 
 # ---------- LOGOUT ----------
 @bp.route("/logout", methods=["POST"])
@@ -209,3 +225,4 @@ def reset_password():
         return error_response("Invalid OTP or failed to reset password", 400)
 
     return jsonify({"message": "Password reset successfully"}), 200
+
