@@ -27,112 +27,59 @@ COMPANY_EMAIL_DOMAIN = "@company.com"
 @bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "Missing JSON body"}), 422
+
     result = authenticate_and_generate_tokens(data)
     if "error" in result:
         return jsonify({"error": result["error"]}), result.get("code", 401)
 
     access_token = result["access_token"]
     refresh_token = result["refresh_token"]
+    csrf_token = get_csrf_token(access_token)
 
-    response = make_response(jsonify({
-        "user": result["user"],
-        "csrf_token": get_csrf_token(access_token)  # send CSRF token for frontend
-    }))
-
+    response = make_response(jsonify({"user": result["user"], "csrf_token": csrf_token}))
     set_access_cookies(response, access_token)
     set_refresh_cookies(response, refresh_token)
 
-    # Also set CSRF in separate cookies for JS frontend
-    csrf_token = get_csrf_token(access_token)
-    response.set_cookie(
-        "csrf_access_token",
-        csrf_token,
-        httponly=False,
-        secure=bp.root_path != "development",
-        samesite="None",
-        path="/"
-    )
-    response.set_cookie(
-        "csrf_refresh_token",
-        csrf_token,
-        httponly=False,
-        secure=bp.root_path != "development",
-        samesite="None",
-        path="/"
-    )
+    # CSRF cookies
+    response.set_cookie("csrf_access_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
+    response.set_cookie("csrf_refresh_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
 
     return response, 200
-
 
 # ---------- CSRF TOKEN ----------
 @bp.route("/csrf-token", methods=["GET"])
 def get_csrf_token_route():
-    """
-    Optional endpoint to get a CSRF token if frontend needs it separately.
-    Always linked to JWT if available.
-    """
     try:
         verify_jwt_in_request(optional=True)
-    except Exception:
+    except:
         pass
-
     csrf_token = get_csrf_token() or str(uuid.uuid4())
-
     response = jsonify({"csrf_token": csrf_token})
-    response.set_cookie(
-        "csrf_access_token",
-        csrf_token,
-        httponly=False,
-        secure=True,
-        samesite="None",
-        path="/"
-    )
-    response.set_cookie(
-        "csrf_refresh_token",
-        csrf_token,
-        httponly=False,
-        secure=True,
-        samesite="None",
-        path="/"
-    )
+    response.set_cookie("csrf_access_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
+    response.set_cookie("csrf_refresh_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
     return response, 200
 
+
 # ---------- REFRESH ----------
-@bp.route("/refresh", methods=["POST"])
+@bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
     result = refresh_tokens()
     if "error" in result:
-        return jsonify({"error": result["error"]}), 401
+        return jsonify({"error": result["error"]}), result.get("code", 401)
 
-    response = make_response(jsonify({
-        "user": result["user"],
-        "csrf_token": get_csrf_token(result["access_token"])
-    }))
-
+    response = make_response(jsonify({"user": result["user"], "csrf_token": get_csrf_token(result["access_token"])}))
     set_access_cookies(response, result["access_token"])
     set_refresh_cookies(response, result["refresh_token"])
 
     csrf_token = get_csrf_token(result["access_token"])
-    response.set_cookie(
-        "csrf_access_token",
-        csrf_token,
-        httponly=False,
-        secure=bp.root_path != "development",
-        samesite="None",
-        path="/"
-    )
-    response.set_cookie(
-        "csrf_refresh_token",
-        csrf_token,
-        httponly=False,
-        secure=bp.root_path != "development",
-        samesite="None",
-        path="/"
-    )
+    response.set_cookie("csrf_access_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
+    response.set_cookie("csrf_refresh_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
 
     return response, 200
-    
+
 # ---------- CREATE FIRST ADMIN ----------
 @bp.route('/create-admin', methods=['POST'])
 def create_admin():
@@ -186,7 +133,7 @@ def check_session():
     if "error" in result:
         return jsonify({"error": result["error"]}), result.get("code", 401)
 
-    response = jsonify({"user": result["user"]})
+    response = jsonify({"user": result["user"], "csrf_token": get_csrf_token()})
     if "new_access_token" in result:
         set_access_cookies(response, result["new_access_token"])
     return response, 200
@@ -262,4 +209,3 @@ def reset_password():
         return error_response("Invalid OTP or failed to reset password", 400)
 
     return jsonify({"message": "Password reset successfully"}), 200
-
