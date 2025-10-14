@@ -42,7 +42,7 @@ def login():
     set_access_cookies(response, access_token)
     set_refresh_cookies(response, refresh_token)
 
-    # CSRF cookies
+    # Set CSRF cookies
     response.set_cookie("csrf_access_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
     response.set_cookie("csrf_refresh_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
 
@@ -53,14 +53,16 @@ def login():
 def get_csrf_token_route():
     try:
         verify_jwt_in_request(optional=True)
+        access_token = get_jwt().get("jti")  # Fallback if needed
     except:
-        pass
-    csrf_token = get_csrf_token() or str(uuid.uuid4())
+        access_token = None
+
+    csrf_token = get_csrf_token(access_token) if access_token else str(uuid.uuid4())
+
     response = jsonify({"csrf_token": csrf_token})
     response.set_cookie("csrf_access_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
     response.set_cookie("csrf_refresh_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
     return response, 200
-
 
 # ---------- REFRESH ----------
 @bp.route('/refresh', methods=['POST'])
@@ -70,16 +72,43 @@ def refresh():
     if "error" in result:
         return jsonify({"error": result["error"]}), result.get("code", 401)
 
-    response = make_response(jsonify({"user": result["user"], "csrf_token": get_csrf_token(result["access_token"])}))
-    set_access_cookies(response, result["access_token"])
-    set_refresh_cookies(response, result["refresh_token"])
+    access_token = result["access_token"]
+    refresh_token = result["refresh_token"]
+    csrf_token = get_csrf_token(access_token)
 
-    csrf_token = get_csrf_token(result["access_token"])
+    response = make_response(jsonify({"user": result["user"], "csrf_token": csrf_token}))
+    set_access_cookies(response, access_token)
+    set_refresh_cookies(response, refresh_token)
+
+    # Update CSRF cookies
     response.set_cookie("csrf_access_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
     response.set_cookie("csrf_refresh_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
 
     return response, 200
 
+# ---------- SESSION CHECK ----------
+@bp.route('/session', methods=['GET'])
+def check_session():
+    result = check_session_service(request)
+    if "error" in result:
+        return jsonify({"error": result["error"]}), result.get("code", 401)
+
+    # Determine which token to use for CSRF
+    token_for_csrf = result.get("new_access_token") or request.cookies.get("access_token_cookie")
+    csrf_token = get_csrf_token(token_for_csrf) if token_for_csrf else str(uuid.uuid4())
+
+    response = jsonify({"user": result["user"], "csrf_token": csrf_token})
+
+    if "new_access_token" in result:
+        set_access_cookies(response, result["new_access_token"])
+
+    # Update CSRF cookies
+    response.set_cookie("csrf_access_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
+    response.set_cookie("csrf_refresh_token", csrf_token, httponly=False, secure=True, samesite="None", path="/")
+
+    return response, 200
+
+    
 # ---------- CREATE FIRST ADMIN ----------
 @bp.route('/create-admin', methods=['POST'])
 def create_admin():
@@ -126,17 +155,17 @@ def signup():
 
     return jsonify(result), result.get("status", 200)
 
-# ---------- SESSION CHECK ----------
-@bp.route('/session', methods=['GET'])
-def check_session():
-    result = check_session_service(request)
-    if "error" in result:
-        return jsonify({"error": result["error"]}), result.get("code", 401)
+# # ---------- SESSION CHECK ----------
+# @bp.route('/session', methods=['GET'])
+# def check_session():
+#     result = check_session_service(request)
+#     if "error" in result:
+#         return jsonify({"error": result["error"]}), result.get("code", 401)
 
-    response = jsonify({"user": result["user"], "csrf_token": get_csrf_token()})
-    if "new_access_token" in result:
-        set_access_cookies(response, result["new_access_token"])
-    return response, 200
+#     response = jsonify({"user": result["user"], "csrf_token": get_csrf_token()})
+#     if "new_access_token" in result:
+#         set_access_cookies(response, result["new_access_token"])
+#     return response, 200
 
 # ---------- LOGOUT ----------
 @bp.route("/logout", methods=["POST"])
@@ -209,3 +238,4 @@ def reset_password():
         return error_response("Invalid OTP or failed to reset password", 400)
 
     return jsonify({"message": "Password reset successfully"}), 200
+
