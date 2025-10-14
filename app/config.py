@@ -36,5 +36,6 @@ class Config:
     # CORS allowed origins
     FRONTEND_ORIGINS = [
         "http://localhost:5173",
-        "https://hanfreelancer.netlify.app"
+        "https://hanfreelancer1.netlify.app"
     ]
+
