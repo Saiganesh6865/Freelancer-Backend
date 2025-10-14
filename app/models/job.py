@@ -31,7 +31,7 @@ class Job(db.Model):
             "id": self.id,
             "title": self.title,
             "description": self.description,
-            "skills_required": self.skills_required,
+            "skills_required": self.skills_required.split(", ") if self.skills_required else [],
             "client_id": self.client_id,
             "created_by": self.created_by,
             "project_type": self.project_type,
@@ -39,5 +39,7 @@ class Job(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "deadline": self.deadline.isoformat() if self.deadline else None,
             "manager_id": self.manager_id,
-            "manager_username": self.manager.username if self.manager else None,  # ✅ add this
+            "manager_username": self.manager.username if self.manager else None,
         }
+
+
