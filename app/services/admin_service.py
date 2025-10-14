@@ -19,7 +19,7 @@ def create_project(admin_id, data):
         description=data.get("description"),
         description_file = data.get("description_file"),
         project_type=data["project_type"],
-        skills_required=data.get("skills_required"),
+        skills_required=data.get("required_skills"),
         status="open",
         created_by=admin_id
     )
