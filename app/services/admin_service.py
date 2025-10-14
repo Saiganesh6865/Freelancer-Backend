@@ -14,12 +14,15 @@ def get_admin_stats():
 
 
 def create_project(admin_id, data):
+    skills = data.get("required_skills") or []
+    skills_str = ", ".join(skills)  # convert array to comma-separated string
+
     project = Job(
         title=data["title"],
         description=data.get("description"),
-        description_file = data.get("description_file"),
+        description_file=data.get("description_file"),
         project_type=data["project_type"],
-        skills_required=data.get("required_skills"),
+        skills_required=skills_str,
         status="open",
         created_by=admin_id
     )
@@ -41,11 +44,14 @@ def update_project(project_id, data):
     project.title = data.get("title", project.title)
     project.description = data.get("description", project.description)
     project.project_type = data.get("project_type", project.project_type)
-    project.skills_required = data.get("skills_required", project.skills_required)
     project.status = data.get("status", project.status)
+
+    if "required_skills" in data:
+        project.skills_required = ", ".join(data["required_skills"])  # ✅ join array into comma-separated string
 
     db.session.commit()
     return project
+
 
 
 def delete_project(project_id):
@@ -109,4 +115,5 @@ def assign_manager_to_jobs(job_ids, manager_username):
         "assigned_jobs": assigned_jobs,
         "not_found_jobs": not_found_jobs
     }, 200
+
 
