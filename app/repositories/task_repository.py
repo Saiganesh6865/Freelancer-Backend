@@ -1,64 +1,60 @@
-# app/repositories/task_repository.py
 from app.models.task import Task
 from app import db
 from app.models.user import User
-from sqlalchemy.orm import joinedload
-
-# def create_task(batch_id, name, count, deadline, assign_date, assigned_by, assigned_to=None):
-#     task = Task(
-#         batch_id=batch_id,
-#         name=name,
-#         count=count,
-#         deadline=deadline,
-#         assign_date=assign_date,
-#         assigned_by=assigned_by,
-#         assigned_to=assigned_to
-#     )
-#     db.session.add(task)
-#     db.session.commit()
-#     return task
 
 def create_task(data):
-    # Find freelancer by username
-    freelancer = User.query.filter_by(username=data["assigned_to_username"]).first()
-    if not freelancer:
-        raise ValueError("Freelancer not found")
+    """
+    Creates a task assigned to a freelancer.
+    Expects data:
+    - job_id
+    - batch_id
+    - title
+    - description (optional)
+    - count (optional)
+    - assigned_by
+    - assigned_to_username (optional)
+    """
+    # Find freelancer by username if provided
+    assigned_to_id = None
+    if data.get("assigned_to_username"):
+        freelancer = User.query.filter_by(username=data["assigned_to_username"]).first()
+        if not freelancer:
+            raise ValueError("Freelancer not found")
+        assigned_to_id = freelancer.id
 
-    # Create task with freelancer.id
+    # Create task
     task = Task(
-        job_id=data["project_id"],
-        batch_id=data["batch_id"],
-        title=data["title"],
+        job_id=data["job_id"],          # required
+        batch_id=data["batch_id"],      # required
+        title=data["title"],            # required
         description=data.get("description"),
         count=data.get("count", 0),
         status="pending",
         assigned_by=data["assigned_by"],
-        assigned_to=freelancer.id
+        assigned_to=assigned_to_id
     )
     db.session.add(task)
     db.session.commit()
-
-    # # Count how many tasks this freelancer has in this batch
-    # task_count = Task.query.filter_by(batch_id=data["batch_id"], assigned_to=freelancer.id).count()
 
     return {
         "message": "Task assigned successfully",
         "task": {
             "task_id": task.id,
             "batch_id": task.batch_id,
-            "member_id": freelancer.id,
-            "username": freelancer.username,
+            "member_id": assigned_to_id,
+            "username": data.get("assigned_to_username"),
             "title": task.title,
             "count": task.count,
             "status": task.status
         }
     }
-def get_tasks_by_project(project_id):
-    return Task.query.filter_by(project_id=project_id).all()
+
+# --- Other repository functions ---
+def get_tasks_by_job(job_id):
+    return Task.query.filter_by(job_id=job_id).all()
 
 def get_tasks_by_user_id(user_id):
     return Task.query.filter_by(assigned_to=user_id).all()
-    
 
 def update_task_status(task_id, status):
     task = Task.query.get(task_id)
@@ -67,16 +63,13 @@ def update_task_status(task_id, status):
         db.session.commit()
     return task
 
-
 def get_tasks_by_batch(batch_id):
     return Task.query.filter_by(batch_id=batch_id).all()
 
 def get_tasks_by_manager(manager_id):
-    # Fetch tasks for batches belonging to manager's projects
     from app.models.batch import Batch
     return Task.query.join(Batch, Task.batch_id == Batch.id)\
                      .filter(Batch.created_by == manager_id)\
-                     .options(joinedload(Task.batch))\
                      .all()
 
 def delete_tasks_by_batch(batch_id):
