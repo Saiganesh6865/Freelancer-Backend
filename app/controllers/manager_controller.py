@@ -83,12 +83,15 @@ def create_task():
         return error_response("Managers only", 403)
 
     data = request.get_json() or {}
-    required_fields = ["project_id", "title", "batch_id", "assigned_to_username"]
+
+    # Required fields: title, batch_id (assigned_to_username is optional)
+    required_fields = ["title", "batch_id"]
     missing = [f for f in required_fields if not data.get(f)]
     if missing:
         return error_response(f"Missing fields: {', '.join(missing)}", 400)
 
     try:
+        # task creation will use batch_id to find job_id internally if needed
         task = create_task_for_job(manager_id(), data)
         return jsonify({"status": "success", "data": task}), 200
     except ValueError as ve:
@@ -256,4 +259,5 @@ def assign_freelancer_to_project():
     manager_id = get_current_manager_id()  # from JWT now
 
     result = assign_freelancers_to_batch(manager_id, batch_id, freelancer_ids)
+
     return jsonify(result)
