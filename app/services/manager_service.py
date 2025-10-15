@@ -45,29 +45,47 @@ def get_manager_tasks(manager_id, job_id=None):
     return [t.to_dict(include_job=True, include_batch=True, include_freelancer=True) for t in tasks]
 
 def add_task(manager_id, data):
+    from app.repositories.task_repository import create_task
+    from app.repositories.batch_repository import get_batch_by_id
+    from datetime import datetime
+    from dateutil import parser
+
     batch = get_batch_by_id(data["batch_id"])
     if not batch:
         raise ValueError("Invalid batch_id")
     if not data.get("job_id"):
         raise ValueError("job_id is required")
 
+    # Parse optional dates
     deadline = parser.parse(data["deadline"]) if data.get("deadline") else None
     assign_date = parser.parse(data["assign_date"]) if data.get("assign_date") else datetime.utcnow()
 
-    return create_task(
-        job_id=data["job_id"],
+    # Pass all required fields to the repository, but do NOT send job_id as keyword if repo doesn't accept it
+    task = create_task(
         batch_id=batch.id,
         title=data["title"],
         count=data.get("count", 1),
+        assigned_by=manager_id,
+        assigned_to=data.get("assigned_to") or data.get("assigned_to_username"),
         deadline=deadline,
         assign_date=assign_date,
         extra_metadata=data.get("metadata"),
-        assigned_by=manager_id,
-        assigned_to=data.get("assigned_to")
-    ).to_dict()
+        job_id=data["job_id"]  # include it INSIDE the Task object
+    )
+
+    return task.to_dict()
+
 
 def create_task_for_job(manager_id, data):
-    return add_task(manager_id, data)
+    batch_id = data.get("batch_id")
+    if not batch_id:
+        raise ValueError("batch_id is required")
+
+    # Inject assigned_by as the current manager
+    data["assigned_by"] = manager_id
+
+    # create_task will handle the rest (including job_id from batch)
+    return create_task(data)
 
 
 def change_task_status(manager_id, task_id, status):
@@ -245,4 +263,5 @@ def change_application_status(application_id, status):
         assign_freelancers_to_batch(app_obj.batch_id, [app_obj.freelancer_id], app_obj.manager_id)
 
     return app_obj.to_dict() if app_obj else None
+
 
