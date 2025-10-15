@@ -34,8 +34,11 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # CORS allowed origins
+     # "https://hanfreelancer1.netlify.app"
     FRONTEND_ORIGINS = [
         "http://localhost:5173",
-        "https://hanfreelancer1.netlify.app"
+        "https://freelancer-frontend-jib3.onrender.com"
+       
     ]
+
 
