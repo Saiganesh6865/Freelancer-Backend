@@ -56,6 +56,9 @@ def refresh_tokens():
     Implements refresh token rotation with revocation.
     """
     user_id = get_jwt_identity()
+    if not user_id:
+        return {"error": "Invalid or missing user ID", "code": 401}
+
     user = User.query.get(user_id)
     if not user:
         return {"error": "User not found", "code": 404}
@@ -120,7 +123,11 @@ def signup_user(total_users, data):
 
     db.session.add(new_user)
     db.session.commit()
-    return {"message": "User created successfully", "user": {"id": new_user.id, "username": new_user.username, "role": new_user.role}, "status": 200}
+    return {
+        "message": "User created successfully",
+        "user": {"id": new_user.id, "username": new_user.username, "role": new_user.role},
+        "status": 200
+    }
 
 
 def check_session_service(request):
@@ -131,6 +138,9 @@ def check_session_service(request):
     try:
         verify_jwt_in_request(optional=True)
         user_id = get_jwt_identity()
+        if not user_id:
+            return {"error": "Invalid or missing user ID", "code": 401}
+
         user = User.query.get(user_id)
         if not user:
             return {"error": "User not found", "code": 401}
@@ -145,13 +155,19 @@ def check_session_service(request):
         if decoded.get("type") != "refresh":
             return {"error": "Invalid refresh token", "code": 401}
 
-        user_id = decoded["sub"]
+        user_id = decoded.get("sub")
+        if not user_id:
+            return {"error": "Invalid refresh token payload", "code": 401}
+
         user = User.query.get(user_id)
         if not user:
             return {"error": "User not found", "code": 401}
 
         new_access_token = create_access_token(identity=user_id)
-        return {"user": {"id": user.id, "username": user.username, "email": user.email, "role": user.role}, "new_access_token": new_access_token}
+        return {
+            "user": {"id": user.id, "username": user.username, "email": user.email, "role": user.role},
+            "new_access_token": new_access_token
+        }
 
 
 # ---------------- PASSWORD RESET ----------------
@@ -199,11 +215,15 @@ def list_all_users_service():
 
 
 def get_user_by_id_service(user_id):
+    if not user_id:
+        return None
     user = User.query.get(user_id)
     return user.to_dict() if user else None
 
 
 def delete_user_service(user_id):
+    if not user_id:
+        return False
     user = User.query.get(user_id)
     if not user:
         return False
