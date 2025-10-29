@@ -36,5 +36,7 @@ class Config:
     # CORS allowed origins
     FRONTEND_ORIGINS = [
         "http://localhost:5173",
-        "https://freelancer-frontend-jib3.onrender.com"
+        "https://freelancer-frontend-jib3.onrender.com",
+        "https://freelancer-frontend-new.onrender.com"
     ]
+
